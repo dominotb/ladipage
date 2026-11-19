@@ -320,46 +320,10 @@
     });
   });
 
-  /* ---------- 8. International Phone Input + Live Validation + Duplicate Check ---------- */
-  var countrySelect = document.getElementById('inp-country');
+  /* ---------- 8. Smart Phone Input (Default VN, Auto-detect +Country) + Duplicate Check ---------- */
   var phoneInput = document.getElementById('inp-phone');
   var phoneField = document.getElementById('f-phone');
-  var phoneHint = document.getElementById('phoneHint');
   var phoneErr = document.getElementById('phoneErr');
-  var phoneOk = document.getElementById('phoneOk');
-  var countries = Array.isArray(cfg.countries) ? cfg.countries : [];
-
-  function populateCountries() {
-    if (!countrySelect || !countries.length) return;
-    countrySelect.innerHTML = '';
-    countries.forEach(function (c) {
-      var opt = document.createElement('option');
-      opt.value = c.iso;
-      opt.textContent = c.flag + ' ' + c.dialCode + ' ' + c.name;
-      if (c.iso === 'VN') opt.selected = true;
-      countrySelect.appendChild(opt);
-    });
-    updateCountryHint();
-  }
-
-  function getSelectedCountry() {
-    var iso = countrySelect ? countrySelect.value : 'VN';
-    for (var i = 0; i < countries.length; i++) {
-      if (countries[i].iso === iso) return countries[i];
-    }
-    return { iso: 'VN', name: 'Việt Nam', dialCode: '+84', placeholder: '0967 862 545' };
-  }
-
-  function updateCountryHint() {
-    var c = getSelectedCountry();
-    if (phoneInput) phoneInput.placeholder = 'Ví dụ: ' + c.placeholder;
-    if (phoneHint) {
-      phoneHint.textContent =
-        'Định dạng ' + c.name + ' (' + c.dialCode + ') — ví dụ: ' + c.placeholder + '. Kiểm tra tự động độ dài và trùng lặp.';
-    }
-  }
-
-  populateCountries();
 
   var lastCheckedPhoneKey = '';
   var lastPhoneStatus = null; // { valid, duplicate, message }
@@ -371,16 +335,12 @@
     if (state === 'invalid') {
       phoneField.classList.add('invalid');
       if (phoneErr) phoneErr.textContent = message || 'Số điện thoại không hợp lệ.';
-    } else if (state === 'valid') {
-      phoneField.classList.add('valid');
-      if (phoneOk) phoneOk.textContent = message || '✓ Số điện thoại hợp lệ và sẵn sàng đăng ký.';
     }
   }
 
   async function verifyPhoneRemote(showEmptyError) {
     if (!phoneInput) return { valid: false };
     var raw = phoneInput.value.trim();
-    var iso = countrySelect ? countrySelect.value : 'VN';
     if (!raw) {
       lastCheckedPhoneKey = '';
       lastPhoneStatus = null;
@@ -389,8 +349,7 @@
       return { valid: false, message: 'Vui lòng nhập số điện thoại.' };
     }
 
-    var cacheKey = iso + '|' + raw;
-    if (cacheKey === lastCheckedPhoneKey && lastPhoneStatus) {
+    if (raw === lastCheckedPhoneKey && lastPhoneStatus) {
       return lastPhoneStatus;
     }
 
@@ -398,10 +357,10 @@
       var res = await fetch('/api/leads/check-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: raw, countryIso: iso }),
+        body: JSON.stringify({ phone: raw }),
       });
       var data = await res.json();
-      lastCheckedPhoneKey = cacheKey;
+      lastCheckedPhoneKey = raw;
 
       if (!res.ok || !data.valid) {
         lastPhoneStatus = { valid: false, duplicate: false, message: data.message };
@@ -416,21 +375,11 @@
       }
 
       lastPhoneStatus = { valid: true, duplicate: false, data: data };
-      setPhoneState('valid', '✓ Hợp lệ (' + data.international + ') — chưa trùng trong hệ thống.');
+      setPhoneState('neutral');
       return lastPhoneStatus;
     } catch (e) {
       return { valid: true, fallback: true };
     }
-  }
-
-  if (countrySelect) {
-    countrySelect.addEventListener('change', function () {
-      updateCountryHint();
-      lastCheckedPhoneKey = '';
-      if (phoneInput && phoneInput.value.trim()) {
-        verifyPhoneRemote(false);
-      }
-    });
   }
 
   if (phoneInput) {
@@ -488,7 +437,6 @@
       var payload = {
         name: name,
         phone: phoneInput.value.trim(),
-        countryIso: countrySelect ? countrySelect.value : 'VN',
         stage: document.getElementById('inp-stage').value,
         area: document.getElementById('inp-area').value.trim(),
         need: document.getElementById('inp-need').value.trim(),
@@ -556,7 +504,6 @@
 
         submitBtn.textContent = 'Đã gửi yêu cầu tư vấn ✓';
         leadForm.reset();
-        populateCountries();
         setPhoneState('neutral');
       } catch (err) {
         submitting = false;

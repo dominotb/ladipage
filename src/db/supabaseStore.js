@@ -215,7 +215,8 @@ module.exports = {
     let q = sb.from(T.leads).select('*', { count: 'exact' });
 
     if (search) {
-      const safe = search.replace(/[,%()]/g, ' ').trim();
+      // Strictly strip all PostgREST filter DSL control characters to prevent filter injection
+      const safe = search.replace(/[,%*()."\\':;]/g, ' ').replace(/\s+/g, ' ').trim();
       if (safe) {
         q = q.or(
           `name.ilike.%${safe}%,phone_e164.ilike.%${safe}%,phone_raw.ilike.%${safe}%,area.ilike.%${safe}%,need.ilike.%${safe}%`

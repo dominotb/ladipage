@@ -67,10 +67,6 @@ function getCountriesList() {
  * - Returns normalized E.164 (e.g. +84967862545) for duplicate detection
  */
 function validatePhone(rawInput, countryIso = 'VN') {
-  const iso = String(countryIso || 'VN').toUpperCase();
-  const countryInfo = COUNTRY_MAP.get(iso) || COUNTRY_MAP.get('VN');
-  const effectiveIso = countryInfo.iso;
-
   const cleaned = String(rawInput || '').trim();
   if (!cleaned) {
     return {
@@ -85,46 +81,73 @@ function validatePhone(rawInput, countryIso = 'VN') {
     return {
       ok: false,
       code: 'INVALID_CHARS',
-      message: 'Số điện thoại chỉ được chứa chữ số và ký tự phân tách (+, khoảng trắng, dấu gạch ngang).',
+      message: 'Số điện thoại chỉ được chứa chữ số và dấu + (nếu là số quốc tế).',
     };
   }
 
+  // International mode: starts with '+' -> auto-detect country from dial code
+  const isInternational = cleaned.startsWith('+');
+  const iso = isInternational ? undefined : String(countryIso || 'VN').toUpperCase();
+  const countryInfo = !isInternational
+    ? COUNTRY_MAP.get(iso) || COUNTRY_MAP.get('VN')
+    : null;
+  const effectiveIso = countryInfo ? countryInfo.iso : undefined;
+
   // Check length first for precise TOO_SHORT / TOO_LONG feedback
-  const lenCheck = validatePhoneNumberLength(cleaned, effectiveIso);
+  const lenCheck = effectiveIso
+    ? validatePhoneNumberLength(cleaned, effectiveIso)
+    : validatePhoneNumberLength(cleaned);
+
   if (lenCheck === 'TOO_SHORT') {
     return {
       ok: false,
       code: 'TOO_SHORT',
-      message: `Số điện thoại bị thiếu số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}). Ví dụ: ${countryInfo.placeholder}`,
+      message: countryInfo
+        ? `Số điện thoại bị thiếu số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}).`
+        : 'Số điện thoại quốc tế bị thiếu số theo mã quốc gia đã nhập.',
     };
   }
   if (lenCheck === 'TOO_LONG') {
     return {
       ok: false,
       code: 'TOO_LONG',
-      message: `Số điện thoại bị thừa số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}). Ví dụ: ${countryInfo.placeholder}`,
+      message: countryInfo
+        ? `Số điện thoại bị thừa số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}).`
+        : 'Số điện thoại quốc tế bị thừa số theo mã quốc gia đã nhập.',
     };
   }
   if (lenCheck === 'INVALID_LENGTH') {
     return {
       ok: false,
       code: 'INVALID_LENGTH',
-      message: `Độ dài số điện thoại không hợp lệ cho ${countryInfo.name} (${countryInfo.dialCode}). Ví dụ: ${countryInfo.placeholder}`,
+      message: countryInfo
+        ? `Độ dài số điện thoại không hợp lệ cho ${countryInfo.name} (${countryInfo.dialCode}).`
+        : 'Độ dài số điện thoại quốc tế không hợp lệ.',
     };
   }
-  if (lenCheck === 'NOT_A_NUMBER' || lenCheck === 'INVALID_COUNTRY') {
+  if (lenCheck === 'INVALID_COUNTRY') {
+    return {
+      ok: false,
+      code: 'INVALID_COUNTRY',
+      message: 'Mã quốc gia sau dấu + không hợp lệ. Vui lòng kiểm tra lại.',
+    };
+  }
+  if (lenCheck === 'NOT_A_NUMBER') {
     return {
       ok: false,
       code: 'INVALID_FORMAT',
-      message: `Số điện thoại không hợp lệ cho ${countryInfo.name} (${countryInfo.dialCode}).`,
+      message: 'Số điện thoại không hợp lệ.',
     };
   }
 
   try {
-    const parsed = parsePhoneNumberWithError(cleaned, effectiveIso);
+    const parsed = effectiveIso
+      ? parsePhoneNumberWithError(cleaned, effectiveIso)
+      : parsePhoneNumberWithError(cleaned);
+
     if (!parsed || !parsed.isValid()) {
-      // Extra-clear feedback for Vietnam mobile numbers (always 10 digits with leading 0 / 9 national digits)
-      if (effectiveIso === 'VN') {
+      const checkIso = parsed?.country || effectiveIso;
+      if (checkIso === 'VN') {
         const digitsOnly = cleaned.replace(/\D/g, '');
         const nationalDigits = digitsOnly.startsWith('84')
           ? digitsOnly.slice(2)
@@ -136,14 +159,14 @@ function validatePhone(rawInput, countryIso = 'VN') {
             return {
               ok: false,
               code: 'TOO_SHORT',
-              message: `Số điện thoại Việt Nam bị thiếu số (cần đúng 10 số bắt đầu bằng 0, ví dụ: ${countryInfo.placeholder}).`,
+              message: 'Số điện thoại bị thiếu số (số di động Việt Nam gồm 10 chữ số).',
             };
           }
           if (nationalDigits.length > 9) {
             return {
               ok: false,
               code: 'TOO_LONG',
-              message: `Số điện thoại Việt Nam bị thừa số (chỉ gồm đúng 10 số bắt đầu bằng 0, ví dụ: ${countryInfo.placeholder}).`,
+              message: 'Số điện thoại bị thừa số (số di động Việt Nam chỉ gồm 10 chữ số).',
             };
           }
         }
@@ -152,40 +175,53 @@ function validatePhone(rawInput, countryIso = 'VN') {
       return {
         ok: false,
         code: 'INVALID_FORMAT',
-        message: `Đầu số hoặc định dạng số điện thoại không hợp lệ tại ${countryInfo.name} (${countryInfo.dialCode}). Ví dụ: ${countryInfo.placeholder}`,
+        message: isInternational
+          ? 'Số điện thoại quốc tế không đúng định dạng hoặc sai mã vùng.'
+          : 'Đầu số hoặc định dạng số điện thoại không hợp lệ.',
       };
     }
 
-    const detectedIso = parsed.country || effectiveIso;
-    const dialCode = `+${parsed.countryCallingCode || getCountryCallingCode(detectedIso)}`;
+    const detectedIso = parsed.country || effectiveIso || 'INTL';
+    const dialCode = `+${parsed.countryCallingCode || (detectedIso !== 'INTL' ? getCountryCallingCode(detectedIso) : '')}`;
 
     return {
       ok: true,
       countryIso: detectedIso,
       dialCode,
-      e164: parsed.number, // e.g. +84967862545
-      national: parsed.formatNational(), // e.g. 0967 862 545
-      international: parsed.formatInternational(), // e.g. +84 96 786 25 45
+      e164: parsed.number,
+      national: parsed.formatNational(),
+      international: parsed.formatInternational(),
     };
   } catch (err) {
     if (err && err.message === 'TOO_SHORT') {
       return {
         ok: false,
         code: 'TOO_SHORT',
-        message: `Số điện thoại bị thiếu số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}).`,
+        message: isInternational
+          ? 'Số điện thoại quốc tế bị thiếu số.'
+          : 'Số điện thoại bị thiếu số.',
       };
     }
     if (err && err.message === 'TOO_LONG') {
       return {
         ok: false,
         code: 'TOO_LONG',
-        message: `Số điện thoại bị thừa số theo định dạng ${countryInfo.name} (${countryInfo.dialCode}).`,
+        message: isInternational
+          ? 'Số điện thoại quốc tế bị thừa số.'
+          : 'Số điện thoại bị thừa số.',
+      };
+    }
+    if (err && err.message === 'INVALID_COUNTRY') {
+      return {
+        ok: false,
+        code: 'INVALID_COUNTRY',
+        message: 'Mã quốc gia sau dấu + không hợp lệ.',
       };
     }
     return {
       ok: false,
       code: 'INVALID_FORMAT',
-      message: `Số điện thoại không hợp lệ theo mã vùng ${countryInfo.name} (${countryInfo.dialCode}).`,
+      message: 'Số điện thoại không hợp lệ.',
     };
   }
 }

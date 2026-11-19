@@ -1086,15 +1086,8 @@
         </div>
         <div class="field" id="f-phone">
           <label for="inp-phone">Số điện thoại <span class="req">*</span></label>
-          <div class="phone-group">
-            <select id="inp-country" name="countryIso" class="phone-country" aria-label="Mã vùng quốc gia">
-              <option value="VN" selected>🇻🇳 +84 Việt Nam</option>
-            </select>
-            <input id="inp-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="Ví dụ: 0967 862 545" />
-          </div>
-          <span class="hint" id="phoneHint">Chọn đúng mã vùng quốc gia (hỗ trợ số Việt Nam và số nước ngoài).</span>
+          <input id="inp-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Ví dụ: 09xx xxx xxx hoặc +81..." />
           <span class="err" id="phoneErr">Vui lòng nhập số điện thoại hợp lệ.</span>
-          <span class="ok-msg" id="phoneOk">✓ Số điện thoại hợp lệ và sẵn sàng đăng ký.</span>
         </div>
         <div class="hp-field" aria-hidden="true">
           <label for="inp-website">Website</label>
