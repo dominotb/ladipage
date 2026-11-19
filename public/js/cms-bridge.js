@@ -9,6 +9,10 @@
     '[data-cms-key]{position:relative;transition:outline-color .15s,box-shadow .15s;cursor:pointer!important}',
     '[data-cms-key]:hover{outline:2px dashed #dcbc82!important;outline-offset:3px}',
     '[data-cms-key].cms-selected{outline:2px solid #c6a15f!important;outline-offset:3px;box-shadow:0 0 0 4px rgba(198,161,95,.28)!important}',
+    '.hero-media::after,.proj::after{pointer-events:none!important}',
+    '.foot-map{position:relative;cursor:pointer!important}',
+    '.foot-map:hover{outline:2px dashed #dcbc82!important;outline-offset:3px;border-radius:10px}',
+    '.foot-map iframe[data-cms-key]{pointer-events:none!important}',
     '.cms-hover-badge{position:fixed;z-index:99999;pointer-events:none;background:#c6a15f;color:#17130a;font-family:Inter,sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none}',
   ].join('');
   document.head.appendChild(style);
@@ -29,9 +33,24 @@
 
   function findCmsTarget(el) {
     if (!el || el === document.body || el === document.documentElement) return null;
-    // Prefer direct image if clicked on img inside a link/button
+    // Direct image click
     if (el.tagName === 'IMG' && el.hasAttribute('data-cms-key')) return el;
-    return el.closest('[data-cms-key]');
+    // Clicking Google Maps container -> select inner iframe
+    var mapWrap = el.closest('.foot-map');
+    if (mapWrap) {
+      var mapIframe = mapWrap.querySelector('iframe[data-cms-key]');
+      if (mapIframe) return mapIframe;
+    }
+    // Clicking direct editable text/link (e.g. caption inside .proj) takes priority
+    var direct = el.closest('[data-cms-key]');
+    if (direct) return direct;
+    // Clicking Hero image wrapper or Project card background/zoom badge -> select inner image
+    var imgWrap = el.closest('.hero-media, .proj, .foot-logo');
+    if (imgWrap) {
+      var innerImg = imgWrap.querySelector('img[data-cms-key]');
+      if (innerImg) return innerImg;
+    }
+    return null;
   }
 
   function extractElementData(el) {

@@ -607,18 +607,68 @@
     document.getElementById(id).addEventListener('input', emitImageChange);
   });
 
+  // Compress & convert any image to lightweight WebP in browser before upload
+  function compressImageToWebp(file, maxWidth, quality) {
+    maxWidth = maxWidth || 1600;
+    quality = quality || 0.82;
+    return new Promise(function (resolve) {
+      var img = new Image();
+      var objUrl = URL.createObjectURL(file);
+      img.onload = function () {
+        URL.revokeObjectURL(objUrl);
+        var w = img.naturalWidth || img.width;
+        var h = img.naturalHeight || img.height;
+        if (w > maxWidth) {
+          h = Math.round((h * maxWidth) / w);
+          w = maxWidth;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          function (blob) {
+            if (!blob || blob.size >= file.size && file.type === 'image/webp') {
+              resolve(file);
+              return;
+            }
+            var baseName = (file.name || 'image').replace(/\.[^.]+$/, '');
+            var webpFile = new File([blob], baseName + '.webp', { type: 'image/webp' });
+            resolve(webpFile);
+          },
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(objUrl);
+        resolve(file);
+      };
+      img.src = objUrl;
+    });
+  }
+
   document.getElementById('editImgFile').addEventListener('change', async function () {
-    var file = this.files[0];
-    if (!file) return;
-    var fd = new FormData();
-    fd.append('file', file);
+    var rawFile = this.files[0];
+    if (!rawFile) return;
+    var statusEl = document.getElementById('editImgStatus');
+    if (statusEl) statusEl.textContent = 'Đang nén ảnh sang WebP...';
     try {
+      var webpFile = await compressImageToWebp(rawFile, 1600, 0.82);
+      var fd = new FormData();
+      fd.append('file', webpFile);
       var res = await api('/api/admin/media/upload', { method: 'POST', body: fd });
       document.getElementById('editImgSrc').value = res.asset.url;
       emitImageChange();
-      showToast('Đã tải ảnh lên và áp dụng vào bản xem trước!');
+      var origKb = Math.max(1, Math.round(rawFile.size / 1024));
+      var newKb = Math.max(1, Math.round(webpFile.size / 1024));
+      var msg = 'Đã nén WebP (' + origKb + 'KB → ' + newKb + 'KB) và áp dụng!';
+      if (statusEl) statusEl.textContent = '✓ ' + msg;
+      showToast(msg);
       loadQuickMedia();
     } catch (e) {
+      if (statusEl) statusEl.textContent = 'Lỗi: ' + e.message;
       showToast(e.message, true);
     } finally {
       this.value = '';
@@ -639,9 +689,17 @@
     document.getElementById(id).addEventListener('change', emitLinkChange);
   });
 
-  // Iframe live input
+  // Iframe live input (auto-extract src if user pastes full Google Maps <iframe> HTML)
   document.getElementById('editIframeSrc').addEventListener('input', function () {
-    pushLiveChange('iframe', { src: this.value.trim() });
+    var raw = this.value.trim();
+    var m = raw.match(/src=["']([^"']+)["']/i);
+    if (m && m[1]) {
+      raw = m[1].replace(/&amp;/g, '&');
+      this.value = raw;
+    }
+    if (raw.startsWith('https://www.google.com/maps') || raw.startsWith('https://maps.google.com')) {
+      pushLiveChange('iframe', { src: raw });
+    }
   });
 
   // Viewport switcher
@@ -870,13 +928,16 @@
   }
 
   document.getElementById('mediaUploadInput').addEventListener('change', async function () {
-    var file = this.files[0];
-    if (!file) return;
-    var fd = new FormData();
-    fd.append('file', file);
+    var rawFile = this.files[0];
+    if (!rawFile) return;
     try {
+      var webpFile = await compressImageToWebp(rawFile, 1600, 0.82);
+      var fd = new FormData();
+      fd.append('file', webpFile);
       await api('/api/admin/media/upload', { method: 'POST', body: fd });
-      showToast('Tải ảnh lên thành công!');
+      var origKb = Math.max(1, Math.round(rawFile.size / 1024));
+      var newKb = Math.max(1, Math.round(webpFile.size / 1024));
+      showToast('Tải ảnh lên thành công (đã nén WebP: ' + origKb + 'KB → ' + newKb + 'KB)!');
       loadMedia();
     } catch (e) {
       showToast(e.message, true);

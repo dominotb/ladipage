@@ -276,12 +276,11 @@
                     <img id="editImgPreview" src="" alt="" />
                   </div>
                   <div class="form-group">
-                    <label>Tải ảnh mới từ máy tính (JPG/PNG/WebP/GIF, tối đa 5MB)</label>
-                    <input type="file" id="editImgFile" accept="image/jpeg,image/png,image/webp,image/gif" />
-                  </div>
-                  <div class="form-group">
-                    <label>Hoặc dán đường dẫn ảnh (URL)</label>
-                    <input type="text" id="editImgSrc" placeholder="/uploads/... hoặc https://..." />
+                    <label class="btn btn-gold w-full" style="cursor:pointer;margin-bottom:4px">
+                      ⬆ Tải ảnh từ máy (tự động nén WebP siêu nhẹ)
+                      <input type="file" id="editImgFile" accept="image/*" hidden />
+                    </label>
+                    <p class="muted small" id="editImgStatus" style="margin:4px 0 0">Tự động giảm dung lượng &amp; đổi sang chuẩn WebP (tối ưu tốc độ tải trang).</p>
                   </div>
                   <div class="form-group">
                     <label>Chọn nhanh từ Thư viện ảnh</label>
@@ -295,6 +294,12 @@
                     <label>Chú thích Lightbox (nếu là ảnh công trình)</label>
                     <input type="text" id="editImgCaption" />
                   </div>
+                  <details style="margin-top:8px">
+                    <summary class="muted small" style="cursor:pointer">Nâng cao: sửa trực tiếp URL ảnh</summary>
+                    <div class="form-group" style="margin-top:8px">
+                      <input type="text" id="editImgSrc" placeholder="/uploads/... hoặc https://..." />
+                    </div>
+                  </details>
                 </div>
 
                 <!-- LINK EDITOR -->
@@ -319,8 +324,9 @@
                 <!-- IFRAME / MAP EDITOR -->
                 <div id="editorIframe" class="editor-block hidden">
                   <div class="form-group">
-                    <label>Google Maps Embed URL (chỉ chấp nhận https://www.google.com/maps/...)</label>
-                    <textarea id="editIframeSrc" rows="4"></textarea>
+                    <label>Link nhúng Google Maps (dán URL hoặc nguyên thẻ &lt;iframe&gt; từ Google Maps)</label>
+                    <textarea id="editIframeSrc" rows="4" placeholder="Dán nguyên mã &lt;iframe src=&quot;https://www.google.com/maps/embed?...&quot;&gt; hoặc link https://www.google.com/maps/..."></textarea>
+                    <p class="muted small" style="margin-top:6px">Mẹo: Vào Google Maps → Chia sẻ → Nhúng bản đồ → Sao chép HTML rồi dán thẳng vào đây, hệ thống tự tách link <code>src</code>.</p>
                   </div>
                 </div>
               </div>

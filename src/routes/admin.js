@@ -15,6 +15,7 @@ const {
 } = require('../middleware/security');
 const { sendFacebookConversionEvent } = require('../services/facebookCapi');
 const { uploadMiddleware, saveVerifiedImage } = require('../services/upload');
+const { invalidateCmsCache } = require('../services/cmsRenderer');
 
 const router = express.Router();
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -260,6 +261,7 @@ router.put(
       fb_lead_value: leadValue,
       fb_currency: currency,
     });
+    invalidateCmsCache();
 
     await store.logAudit(
       req.admin.username,
@@ -388,6 +390,7 @@ router.put(
         og_image: validateSafeImageUrl(seo.og_image),
       });
     }
+    invalidateCmsCache();
 
     await store.logAudit(
       req.admin.username,
@@ -412,6 +415,7 @@ router.delete(
   asyncHandler(async (req, res) => {
     const key = sanitizePlainText(req.params.key, 80);
     await store.deleteCmsOverride(key);
+    invalidateCmsCache();
     await store.logAudit(req.admin.username, 'CMS_RESET_KEY', key, '', getClientIp(req));
     res.json({ ok: true, overrides: await store.getAllCmsOverrides() });
   })
@@ -427,6 +431,7 @@ router.post(
       req.admin.username
     );
     await store.clearAllCmsOverrides();
+    invalidateCmsCache();
     await store.logAudit(req.admin.username, 'CMS_RESET_ALL', 'cms', '', getClientIp(req));
     res.json({ ok: true, message: 'Đã khôi phục toàn bộ giao diện về mặc định ban đầu.' });
   })
@@ -448,6 +453,7 @@ router.post(
       value: item.value || {},
     }));
     await store.saveCmsOverrides(entries, req.admin.username);
+    invalidateCmsCache();
     await store.logAudit(req.admin.username, 'CMS_RESTORE', `revision:${revId}`, '', getClientIp(req));
     res.json({
       ok: true,

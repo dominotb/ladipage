@@ -23,7 +23,10 @@ router.get(
     const previewMode = wantsPreview && isAdminAuthenticated(req);
     const html = await renderLandingPage({ previewMode });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', previewMode ? 'no-store' : 'public, max-age=30');
+    res.setHeader(
+      'Cache-Control',
+      previewMode ? 'no-store' : 'public, max-age=30, s-maxage=60, stale-while-revalidate=300'
+    );
     res.send(html);
   })
 );

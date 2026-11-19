@@ -37,11 +37,31 @@ function safeJsonForScript(obj) {
     .replace(/\u2029/g, '\\u2029');
 }
 
-async function renderLandingPage({ previewMode = false } = {}) {
+let cachedCmsData = null;
+let cachedCmsAt = 0;
+const CMS_CACHE_TTL_MS = 60 * 1000; // 60s in-memory cache to minimize Supabase queries
+
+function invalidateCmsCache() {
+  cachedCmsData = null;
+  cachedCmsAt = 0;
+}
+
+async function loadCmsData(bypassCache) {
+  const now = Date.now();
+  if (!bypassCache && cachedCmsData && now - cachedCmsAt < CMS_CACHE_TTL_MS) {
+    return cachedCmsData;
+  }
   const [settings, overrides] = await Promise.all([
     store.getAllSettings(),
     store.getAllCmsOverrides(),
   ]);
+  cachedCmsData = { settings, overrides };
+  cachedCmsAt = now;
+  return cachedCmsData;
+}
+
+async function renderLandingPage({ previewMode = false } = {}) {
+  const { settings, overrides } = await loadCmsData(previewMode);
 
   let html = getTemplate();
 
@@ -101,4 +121,5 @@ fbq('track', 'PageView');
 
 module.exports = {
   renderLandingPage,
+  invalidateCmsCache,
 };
