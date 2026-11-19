@@ -11,9 +11,42 @@ const {
 const { validatePhone, getCountriesList } = require('../services/phone');
 const { sendFacebookConversionEvent } = require('../services/facebookCapi');
 const { renderLandingPage } = require('../services/cmsRenderer');
+const { renderRobotsTxt, renderSitemapXml, renderLlmsTxt } = require('../services/seoBuilder');
 
 const router = express.Router();
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+function getRequestOrigin(req) {
+  const proto = (req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  const host = (req.get('x-forwarded-host') || req.get('host') || 'localhost').split(',')[0].trim();
+  return `${proto}://${host}`;
+}
+
+// SEO / GEO endpoints: robots.txt, sitemap.xml, llms.txt
+router.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  res.send(renderRobotsTxt(getRequestOrigin(req)));
+});
+
+router.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  res.send(renderSitemapXml(getRequestOrigin(req)));
+});
+
+router.get(
+  '/llms.txt',
+  asyncHandler(async (req, res) => {
+    const [settings, overrides] = await Promise.all([
+      store.getAllSettings(),
+      store.getAllCmsOverrides(),
+    ]);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600');
+    res.send(renderLlmsTxt(getRequestOrigin(req), settings, overrides));
+  })
+);
 
 // GET / -> Render landing page (supports ?cms_preview=1 ONLY for authenticated admin)
 router.get(
@@ -21,7 +54,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const wantsPreview = req.query.cms_preview === '1';
     const previewMode = wantsPreview && isAdminAuthenticated(req);
-    const html = await renderLandingPage({ previewMode });
+    const html = await renderLandingPage({ previewMode, origin: getRequestOrigin(req) });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader(
       'Cache-Control',

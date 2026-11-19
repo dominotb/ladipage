@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const store = require('../db/store');
 const { getCountriesList } = require('./phone');
+const { buildSeoHeadTags } = require('./seoBuilder');
 
 const CANDIDATE_PATHS = [
   path.resolve(__dirname, '../../views/landing.html'),
@@ -60,7 +61,7 @@ async function loadCmsData(bypassCache) {
   return cachedCmsData;
 }
 
-async function renderLandingPage({ previewMode = false } = {}) {
+async function renderLandingPage({ previewMode = false, origin = '' } = {}) {
   const { settings, overrides } = await loadCmsData(previewMode);
 
   let html = getTemplate();
@@ -73,10 +74,7 @@ async function renderLandingPage({ previewMode = false } = {}) {
   html = html.replace(/\{\{SITE_TITLE\}\}/g, escapeHtmlAttr(title));
   html = html.replace(/\{\{SITE_DESCRIPTION\}\}/g, escapeHtmlAttr(desc));
 
-  const headParts = [];
-  if (settings.og_image) {
-    headParts.push(`<meta property="og:image" content="${escapeHtmlAttr(settings.og_image)}" />`);
-  }
+  const headParts = [buildSeoHeadTags({ origin, settings, overrides })];
 
   const fbPixelId = (settings.fb_pixel_id || '').replace(/[^0-9]/g, '');
   const fbPixelEnabled = settings.fb_pixel_enabled === '1' && fbPixelId.length >= 5 && !previewMode;
