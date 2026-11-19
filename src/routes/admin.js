@@ -229,10 +229,11 @@ router.get(
     res.json({
       ok: true,
       config: {
-        fb_pixel_id: settings.fb_pixel_id || '',
+        fb_pixel_id: settings.fb_pixel_id || '1116316424615775',
+        fb_pixel_base_code: settings.fb_pixel_base_code || '',
         fb_capi_token: settings.fb_capi_token || '',
         fb_test_event_code: settings.fb_test_event_code || '',
-        fb_pixel_enabled: settings.fb_pixel_enabled === '1',
+        fb_pixel_enabled: settings.fb_pixel_id ? settings.fb_pixel_enabled === '1' : true,
         fb_capi_enabled: settings.fb_capi_enabled === '1',
         fb_lead_value: settings.fb_lead_value || '0',
         fb_currency: settings.fb_currency || 'VND',
@@ -246,7 +247,24 @@ router.put(
   '/facebook',
   asyncHandler(async (req, res) => {
     const body = req.body || {};
-    const pixelId = sanitizePlainText(body.fb_pixel_id, 40).replace(/[^0-9]/g, '');
+    const rawBaseCode = String(body.fb_pixel_base_code || '').trim().slice(0, 4000);
+    let pixelId = sanitizePlainText(body.fb_pixel_id, 40).replace(/[^0-9]/g, '');
+
+    // Extract Pixel ID from pasted Meta Pixel base code if provided
+    if (rawBaseCode) {
+      const m = rawBaseCode.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d{5,30})['"]\s*\)/i);
+      if (m && m[1]) {
+        pixelId = m[1];
+      }
+      // Security: ensure pasted snippet is a genuine Meta Pixel script (not arbitrary third-party JS)
+      if (!rawBaseCode.includes('connect.facebook.net') || !/fbq\s*\(/i.test(rawBaseCode)) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Mã cơ sở Meta Pixel không hợp lệ (phải là đoạn mã chính thức từ Meta Events Manager).',
+        });
+      }
+    }
+
     const capiToken = sanitizePlainText(body.fb_capi_token, 500);
     const testCode = sanitizePlainText(body.fb_test_event_code, 80);
     const currency = sanitizePlainText(body.fb_currency || 'VND', 10).toUpperCase();
@@ -254,6 +272,7 @@ router.put(
 
     await store.setSettings({
       fb_pixel_id: pixelId,
+      fb_pixel_base_code: rawBaseCode,
       fb_capi_token: capiToken,
       fb_test_event_code: testCode,
       fb_pixel_enabled: body.fb_pixel_enabled ? '1' : '0',

@@ -18,10 +18,10 @@ const T = {
 };
 
 const DEFAULT_SETTINGS = {
-  fb_pixel_id: '',
+  fb_pixel_id: '1116316424615775',
   fb_capi_token: '',
   fb_test_event_code: '',
-  fb_pixel_enabled: '0',
+  fb_pixel_enabled: '1',
   fb_capi_enabled: '0',
   fb_lead_value: '0',
   fb_currency: 'VND',

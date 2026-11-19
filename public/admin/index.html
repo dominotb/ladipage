@@ -157,8 +157,13 @@
           <form id="fbForm" class="card">
             <h3>Cấu hình Meta Pixel &amp; Conversions API</h3>
             <div class="form-group">
-              <label for="fbPixelId">Facebook Pixel ID (Dataset ID)</label>
-              <input id="fbPixelId" type="text" placeholder="Ví dụ: 123456789012345" />
+              <label for="fbPixelBaseCode">Mã cơ sở Meta Pixel (dán nguyên đoạn <code>&lt;!-- Meta Pixel Code --&gt;</code> từ Meta)</label>
+              <textarea id="fbPixelBaseCode" rows="8" style="font-family:monospace;font-size:12px" placeholder="<!-- Meta Pixel Code -->&#10;<script>...fbq('init', '1116316424615775');...</script>&#10;<!-- End Meta Pixel Code -->"></textarea>
+              <p class="muted small" style="margin:4px 0 0">Dán nguyên đoạn mã từ Meta Events Manager — hệ thống tự tách Pixel ID, chèn ngay trước thẻ <code>&lt;/head&gt;</code> và đồng bộ với CAPI.</p>
+            </div>
+            <div class="form-group">
+              <label for="fbPixelId">Facebook Pixel ID (Dataset ID — tự động nhận từ mã trên)</label>
+              <input id="fbPixelId" type="text" placeholder="Ví dụ: 1116316424615775" />
             </div>
             <div class="form-group">
               <label for="fbCapiToken">Conversions API Access Token</label>

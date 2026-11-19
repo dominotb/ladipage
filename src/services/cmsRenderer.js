@@ -76,25 +76,39 @@ async function renderLandingPage({ previewMode = false, origin = '' } = {}) {
 
   const headParts = [buildSeoHeadTags({ origin, settings, overrides })];
 
-  const fbPixelId = (settings.fb_pixel_id || '').replace(/[^0-9]/g, '');
-  const fbPixelEnabled = settings.fb_pixel_enabled === '1' && fbPixelId.length >= 5 && !previewMode;
+  const rawPixelId = (settings.fb_pixel_id || '').replace(/[^0-9]/g, '');
+  const fbPixelId = rawPixelId || '1116316424615775';
+  const pixelExplicitlyDisabled = rawPixelId.length > 0 && settings.fb_pixel_enabled === '0';
+  const fbPixelEnabled = !pixelExplicitlyDisabled && fbPixelId.length >= 5 && !previewMode;
 
+  let pixelCode = '';
   if (fbPixelEnabled) {
-    headParts.push(`<!-- Meta Pixel Code -->
+    const savedBase = String(settings.fb_pixel_base_code || '').trim();
+    if (savedBase && savedBase.includes('connect.facebook.net') && /fbq\s*\(/i.test(savedBase)) {
+      pixelCode = savedBase;
+    } else {
+      pixelCode = `<!-- Meta Pixel Code -->
 <script>
-!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${fbPixelId}');
 fbq('track', 'PageView');
 </script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"/></noscript>
-<!-- End Meta Pixel Code -->`);
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->`;
+    }
   }
 
   html = html.replace('<!-- CMS_INJECT_HEAD -->', headParts.join('\n'));
+  html = html.replace('<!-- CMS_INJECT_PIXEL -->', pixelCode);
 
   const clientConfig = {
     previewMode,

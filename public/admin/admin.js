@@ -392,11 +392,52 @@
   });
 
   /* ---------- TAB 3: FACEBOOK TRACKING ---------- */
+  function buildDefaultPixelSnippet(pixelId) {
+    if (!pixelId) return '';
+    return [
+      '<!-- Meta Pixel Code -->',
+      '<script>',
+      '!function(f,b,e,v,n,t,s)',
+      '{if(f.fbq)return;n=f.fbq=function(){n.callMethod?',
+      'n.callMethod.apply(n,arguments):n.queue.push(arguments)};',
+      'if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version=\'2.0\';',
+      'n.queue=[];t=b.createElement(e);t.async=!0;',
+      't.src=v;s=b.getElementsByTagName(e)[0];',
+      's.parentNode.insertBefore(t,s)}(window, document,\'script\',',
+      '\'https://connect.facebook.net/en_US/fbevents.js\');',
+      'fbq(\'init\', \'' + pixelId + '\');',
+      'fbq(\'track\', \'PageView\');',
+      '</script>',
+      '<noscript><img height="1" width="1" style="display:none"',
+      'src="https://www.facebook.com/tr?id=' + pixelId + '&ev=PageView&noscript=1"',
+      '/></noscript>',
+      '<!-- End Meta Pixel Code -->',
+    ].join('\n');
+  }
+
+  document.getElementById('fbPixelBaseCode').addEventListener('input', function () {
+    var code = this.value;
+    var m = code.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d{5,30})['"]\s*\)/i);
+    if (m && m[1]) {
+      document.getElementById('fbPixelId').value = m[1];
+      document.getElementById('fbPixelEnabled').checked = true;
+    }
+  });
+
+  document.getElementById('fbPixelId').addEventListener('input', function () {
+    var id = this.value.replace(/[^0-9]/g, '');
+    if (id.length >= 5) {
+      document.getElementById('fbPixelBaseCode').value = buildDefaultPixelSnippet(id);
+    }
+  });
+
   async function loadFacebook() {
     try {
       var data = await api('/api/admin/facebook');
       var c = data.config;
       document.getElementById('fbPixelId').value = c.fb_pixel_id;
+      document.getElementById('fbPixelBaseCode').value =
+        c.fb_pixel_base_code || buildDefaultPixelSnippet(c.fb_pixel_id);
       document.getElementById('fbCapiToken').value = c.fb_capi_token;
       document.getElementById('fbTestCode').value = c.fb_test_event_code;
       document.getElementById('fbLeadValue').value = c.fb_lead_value;
@@ -431,6 +472,7 @@
       var res = await api('/api/admin/facebook', {
         method: 'PUT',
         body: {
+          fb_pixel_base_code: document.getElementById('fbPixelBaseCode').value.trim(),
           fb_pixel_id: document.getElementById('fbPixelId').value.trim(),
           fb_capi_token: document.getElementById('fbCapiToken').value.trim(),
           fb_test_event_code: document.getElementById('fbTestCode').value.trim(),
