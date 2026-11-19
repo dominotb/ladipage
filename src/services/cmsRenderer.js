@@ -3,12 +3,19 @@ const path = require('path');
 const store = require('../db/store');
 const { getCountriesList } = require('./phone');
 
-const TEMPLATE_PATH = path.resolve(__dirname, '../../views/landing.html');
+const CANDIDATE_PATHS = [
+  path.resolve(__dirname, '../../views/landing.html'),
+  path.join(process.cwd(), 'views', 'landing.html'),
+];
 let cachedTemplate = null;
 
 function getTemplate() {
   if (!cachedTemplate) {
-    cachedTemplate = fs.readFileSync(TEMPLATE_PATH, 'utf8');
+    const found = CANDIDATE_PATHS.find((p) => fs.existsSync(p));
+    if (!found) {
+      throw new Error(`Landing template not found. Checked: ${CANDIDATE_PATHS.join(', ')}`);
+    }
+    cachedTemplate = fs.readFileSync(found, 'utf8');
   }
   return cachedTemplate;
 }

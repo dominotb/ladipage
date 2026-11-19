@@ -5,6 +5,18 @@ const env = require('../config/env');
 let client = null;
 let seededPromise = null;
 
+// Prefixed table names to isolate Landing Page CMS from other apps in the same Supabase project
+const T = {
+  admins: 'ladi_admins',
+  leads: 'ladi_leads',
+  events: 'ladi_conversion_events',
+  settings: 'ladi_site_settings',
+  overrides: 'ladi_cms_overrides',
+  revisions: 'ladi_cms_revisions',
+  media: 'ladi_media_assets',
+  audit: 'ladi_audit_logs',
+};
+
 const DEFAULT_SETTINGS = {
   fb_pixel_id: '',
   fb_capi_token: '',
@@ -33,7 +45,7 @@ async function ensureSeeded() {
     seededPromise = (async () => {
       const sb = getClient();
       const { count, error } = await sb
-        .from('admins')
+        .from(T.admins)
         .select('id', { count: 'exact', head: true });
       if (error) {
         console.error('[Supabase Seed Check Error]', error.message);
@@ -41,15 +53,14 @@ async function ensureSeeded() {
       }
       if (!count || count === 0) {
         const hash = bcrypt.hashSync(env.adminPassword, 12);
-        await sb.from('admins').insert({
+        await sb.from(T.admins).insert({
           username: env.adminUsername,
           password_hash: hash,
           role: 'superadmin',
         });
       }
-      // Ensure default settings exist (ignore conflicts)
       const rows = Object.entries(DEFAULT_SETTINGS).map(([key, value]) => ({ key, value }));
-      await sb.from('site_settings').upsert(rows, { onConflict: 'key', ignoreDuplicates: true });
+      await sb.from(T.settings).upsert(rows, { onConflict: 'key', ignoreDuplicates: true });
     })().catch((err) => {
       seededPromise = null;
       console.error('[Supabase Seed Error]', err.message);
@@ -77,7 +88,7 @@ module.exports = {
   async findAdminByUsername(username) {
     await ensureSeeded();
     const { data, error } = await getClient()
-      .from('admins')
+      .from(T.admins)
       .select('*')
       .eq('username', username)
       .maybeSingle();
@@ -88,7 +99,7 @@ module.exports = {
   async findAdminById(id) {
     await ensureSeeded();
     const { data, error } = await getClient()
-      .from('admins')
+      .from(T.admins)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -98,7 +109,7 @@ module.exports = {
 
   async updateAdminLoginFailure(id, failedAttempts, lockedUntil) {
     const { error } = await getClient()
-      .from('admins')
+      .from(T.admins)
       .update({
         failed_attempts: failedAttempts,
         locked_until: lockedUntil,
@@ -110,7 +121,7 @@ module.exports = {
 
   async updateAdminLoginSuccess(id) {
     const { error } = await getClient()
-      .from('admins')
+      .from(T.admins)
       .update({
         failed_attempts: 0,
         locked_until: null,
@@ -123,7 +134,7 @@ module.exports = {
 
   async updateAdminPassword(id, passwordHash) {
     const { error } = await getClient()
-      .from('admins')
+      .from(T.admins)
       .update({
         password_hash: passwordHash,
         updated_at: new Date().toISOString(),
@@ -135,7 +146,7 @@ module.exports = {
   // ---------- LEADS ----------
   async findLeadByPhoneE164(phoneE164) {
     const { data, error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .select('id, created_at')
       .eq('phone_e164', phoneE164)
       .maybeSingle();
@@ -145,7 +156,7 @@ module.exports = {
 
   async findLeadById(id) {
     const { data, error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -155,7 +166,7 @@ module.exports = {
 
   async createLead(lead) {
     const { data, error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .insert(lead)
       .select('id')
       .single();
@@ -172,7 +183,7 @@ module.exports = {
 
   async updateLeadCapiStatus(id, status, responseText) {
     const { error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .update({
         fb_capi_status: status,
         fb_capi_response: String(responseText || '').slice(0, 1000),
@@ -184,7 +195,7 @@ module.exports = {
 
   async updateLead(id, { status, notes }) {
     const { error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .update({
         status,
         notes,
@@ -195,13 +206,13 @@ module.exports = {
   },
 
   async deleteLead(id) {
-    const { error } = await getClient().from('leads').delete().eq('id', id);
+    const { error } = await getClient().from(T.leads).delete().eq('id', id);
     throwIfError(error, 'deleteLead');
   },
 
   async listLeads({ search = '', status = '', source = '', page = 1, limit = 25 }) {
     const sb = getClient();
-    let q = sb.from('leads').select('*', { count: 'exact' });
+    let q = sb.from(T.leads).select('*', { count: 'exact' });
 
     if (search) {
       const safe = search.replace(/[,%()]/g, ' ').trim();
@@ -229,7 +240,7 @@ module.exports = {
 
   async getAllLeadsForExport() {
     const { data, error } = await getClient()
-      .from('leads')
+      .from(T.leads)
       .select('*')
       .order('id', { ascending: false })
       .limit(10000);
@@ -252,26 +263,23 @@ module.exports = {
       recentLeadsRes,
       allLeadsMetaRes,
     ] = await Promise.all([
-      sb.from('leads').select('id', { count: 'exact', head: true }),
-      sb.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
+      sb.from(T.leads).select('id', { count: 'exact', head: true }),
+      sb.from(T.leads).select('id', { count: 'exact', head: true }).gte('created_at', todayIso),
       sb
-        .from('leads')
+        .from(T.leads)
         .select('id', { count: 'exact', head: true })
         .or('fbclid.neq.,utm_source.ilike.%fb%,utm_source.ilike.%facebook%'),
+      sb.from(T.events).select('id', { count: 'exact', head: true }).eq('capi_status', 'sent'),
+      sb.from(T.events).select('id', { count: 'exact', head: true }),
+      sb.from(T.overrides).select('cms_key', { count: 'exact', head: true }),
       sb
-        .from('conversion_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('capi_status', 'sent'),
-      sb.from('conversion_events').select('id', { count: 'exact', head: true }),
-      sb.from('cms_overrides').select('cms_key', { count: 'exact', head: true }),
-      sb
-        .from('leads')
+        .from(T.leads)
         .select(
           'id, name, phone_e164, phone_national, country_iso, stage, area, status, utm_source, fb_capi_status, created_at'
         )
         .order('id', { ascending: false })
         .limit(8),
-      sb.from('leads').select('status, utm_source, fbclid').limit(5000),
+      sb.from(T.leads).select('status, utm_source, fbclid').limit(5000),
     ]);
 
     const statusCounts = new Map();
@@ -310,7 +318,7 @@ module.exports = {
   // ---------- CONVERSION EVENTS ----------
   async createConversionEvent(ev) {
     try {
-      await getClient().from('conversion_events').insert(ev);
+      await getClient().from(T.events).insert(ev);
     } catch {
       // non-fatal
     }
@@ -318,7 +326,7 @@ module.exports = {
 
   async listConversionEvents(limit = 100) {
     const { data, error } = await getClient()
-      .from('conversion_events')
+      .from(T.events)
       .select('*')
       .order('id', { ascending: false })
       .limit(limit);
@@ -329,7 +337,7 @@ module.exports = {
   // ---------- SETTINGS ----------
   async getAllSettings() {
     await ensureSeeded();
-    const { data, error } = await getClient().from('site_settings').select('key, value');
+    const { data, error } = await getClient().from(T.settings).select('key, value');
     throwIfError(error, 'getAllSettings');
     const obj = { ...DEFAULT_SETTINGS };
     for (const row of data || []) {
@@ -346,14 +354,14 @@ module.exports = {
       updated_at: now,
     }));
     if (!rows.length) return;
-    const { error } = await getClient().from('site_settings').upsert(rows, { onConflict: 'key' });
+    const { error } = await getClient().from(T.settings).upsert(rows, { onConflict: 'key' });
     throwIfError(error, 'setSettings');
   },
 
   // ---------- CMS OVERRIDES & REVISIONS ----------
   async getAllCmsOverrides() {
     const { data, error } = await getClient()
-      .from('cms_overrides')
+      .from(T.overrides)
       .select('cms_key, cms_type, value_json, updated_at');
     throwIfError(error, 'getAllCmsOverrides');
     const map = {};
@@ -365,7 +373,7 @@ module.exports = {
           updatedAt: row.updated_at,
         };
       } catch {
-        // skip malformed
+        // skip
       }
     }
     return map;
@@ -381,24 +389,22 @@ module.exports = {
       updated_by: updatedBy,
       updated_at: now,
     }));
-    const { error } = await getClient()
-      .from('cms_overrides')
-      .upsert(rows, { onConflict: 'cms_key' });
+    const { error } = await getClient().from(T.overrides).upsert(rows, { onConflict: 'cms_key' });
     throwIfError(error, 'saveCmsOverrides');
   },
 
   async deleteCmsOverride(key) {
-    const { error } = await getClient().from('cms_overrides').delete().eq('cms_key', key);
+    const { error } = await getClient().from(T.overrides).delete().eq('cms_key', key);
     throwIfError(error, 'deleteCmsOverride');
   },
 
   async clearAllCmsOverrides() {
-    const { error } = await getClient().from('cms_overrides').delete().neq('cms_key', '');
+    const { error } = await getClient().from(T.overrides).delete().neq('cms_key', '');
     throwIfError(error, 'clearAllCmsOverrides');
   },
 
   async createCmsRevision(snapshotObj, note, createdBy) {
-    const { error } = await getClient().from('cms_revisions').insert({
+    const { error } = await getClient().from(T.revisions).insert({
       snapshot_json: JSON.stringify(snapshotObj),
       note,
       created_by: createdBy,
@@ -408,7 +414,7 @@ module.exports = {
 
   async listCmsRevisions(limit = 20) {
     const { data, error } = await getClient()
-      .from('cms_revisions')
+      .from(T.revisions)
       .select('id, note, created_by, created_at')
       .order('id', { ascending: false })
       .limit(limit);
@@ -418,7 +424,7 @@ module.exports = {
 
   async getCmsRevisionById(id) {
     const { data, error } = await getClient()
-      .from('cms_revisions')
+      .from(T.revisions)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -449,18 +455,14 @@ module.exports = {
   },
 
   async createMediaAsset(asset) {
-    const { data, error } = await getClient()
-      .from('media_assets')
-      .insert(asset)
-      .select('*')
-      .single();
+    const { data, error } = await getClient().from(T.media).insert(asset).select('*').single();
     throwIfError(error, 'createMediaAsset');
     return data;
   },
 
   async listMediaAssets(limit = 100) {
     const { data, error } = await getClient()
-      .from('media_assets')
+      .from(T.media)
       .select('*')
       .order('id', { ascending: false })
       .limit(limit);
@@ -470,7 +472,7 @@ module.exports = {
 
   async findMediaAssetById(id) {
     const { data, error } = await getClient()
-      .from('media_assets')
+      .from(T.media)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -479,14 +481,14 @@ module.exports = {
   },
 
   async deleteMediaAsset(id) {
-    const { error } = await getClient().from('media_assets').delete().eq('id', id);
+    const { error } = await getClient().from(T.media).delete().eq('id', id);
     throwIfError(error, 'deleteMediaAsset');
   },
 
   // ---------- AUDIT LOGS & BACKUP ----------
   async logAudit(actor, action, target = '', detail = '', ipAddress = '') {
     try {
-      await getClient().from('audit_logs').insert({
+      await getClient().from(T.audit).insert({
         actor,
         action,
         target,
@@ -500,7 +502,7 @@ module.exports = {
 
   async listAuditLogs(limit = 100) {
     const { data, error } = await getClient()
-      .from('audit_logs')
+      .from(T.audit)
       .select('*')
       .order('id', { ascending: false })
       .limit(limit);
@@ -511,11 +513,11 @@ module.exports = {
   async exportFullBackupJson() {
     const sb = getClient();
     const [leads, settings, overrides, events, media] = await Promise.all([
-      sb.from('leads').select('*').order('id', { ascending: false }),
-      sb.from('site_settings').select('*'),
-      sb.from('cms_overrides').select('*'),
-      sb.from('conversion_events').select('*').order('id', { ascending: false }).limit(2000),
-      sb.from('media_assets').select('*').order('id', { ascending: false }),
+      sb.from(T.leads).select('*').order('id', { ascending: false }),
+      sb.from(T.settings).select('*'),
+      sb.from(T.overrides).select('*'),
+      sb.from(T.events).select('*').order('id', { ascending: false }).limit(2000),
+      sb.from(T.media).select('*').order('id', { ascending: false }),
     ]);
     return {
       exportedAt: new Date().toISOString(),
@@ -528,4 +530,3 @@ module.exports = {
     };
   },
 };
-

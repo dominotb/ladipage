@@ -57,7 +57,13 @@ app.use(
 
 // Health check endpoint for Vercel monitoring
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, driver: store.driver, vercel: env.isVercel });
+  res.json({
+    ok: true,
+    driver: store.driver,
+    supabaseConfigured: env.useSupabase,
+    vercel: env.isVercel,
+    node: process.version,
+  });
 });
 
 // Routes
