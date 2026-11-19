@@ -1,10 +1,6 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
-
-const UPLOADS_DIR = path.resolve(__dirname, '../../public/uploads');
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+const store = require('../db/store');
 
 // Max 5 MB per image
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -60,27 +56,24 @@ const uploadMiddleware = multer({
   },
 });
 
-function saveVerifiedImage(file) {
+async function saveVerifiedImage(file) {
   const detected = detectImageType(file.buffer);
   if (!detected) {
     throw new Error('File tải lên không phải ảnh hợp lệ (kiểm tra chữ ký nhị phân thất bại).');
   }
   const filename = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${detected.ext}`;
-  const fullPath = path.join(UPLOADS_DIR, filename);
-  fs.writeFileSync(fullPath, file.buffer);
+  const url = await store.uploadImageToStorage(filename, file.buffer, detected.mime);
 
   return {
     filename,
-    originalName: String(file.originalname || filename).slice(0, 200),
-    mimeType: detected.mime,
-    sizeBytes: file.buffer.length,
-    url: `/uploads/${filename}`,
+    original_name: String(file.originalname || filename).slice(0, 200),
+    mime_type: detected.mime,
+    size_bytes: file.buffer.length,
+    url,
   };
 }
 
 module.exports = {
   uploadMiddleware,
   saveVerifiedImage,
-  UPLOADS_DIR,
 };
-

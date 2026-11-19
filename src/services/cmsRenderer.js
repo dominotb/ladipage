@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getDb, getAllSettings } = require('../db/database');
+const store = require('../db/store');
 const { getCountriesList } = require('./phone');
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../../views/landing.html');
@@ -30,28 +30,11 @@ function safeJsonForScript(obj) {
     .replace(/\u2029/g, '\\u2029');
 }
 
-function getAllCmsOverrides() {
-  const rows = getDb()
-    .prepare('SELECT cms_key, cms_type, value_json, updated_at FROM cms_overrides')
-    .all();
-  const map = {};
-  for (const row of rows) {
-    try {
-      map[row.cms_key] = {
-        type: row.cms_type,
-        value: JSON.parse(row.value_json),
-        updatedAt: row.updated_at,
-      };
-    } catch {
-      // skip malformed
-    }
-  }
-  return map;
-}
-
-function renderLandingPage({ previewMode = false } = {}) {
-  const settings = getAllSettings();
-  const overrides = getAllCmsOverrides();
+async function renderLandingPage({ previewMode = false } = {}) {
+  const [settings, overrides] = await Promise.all([
+    store.getAllSettings(),
+    store.getAllCmsOverrides(),
+  ]);
 
   let html = getTemplate();
 
@@ -63,7 +46,6 @@ function renderLandingPage({ previewMode = false } = {}) {
   html = html.replace(/\{\{SITE_TITLE\}\}/g, escapeHtmlAttr(title));
   html = html.replace(/\{\{SITE_DESCRIPTION\}\}/g, escapeHtmlAttr(desc));
 
-  // Head injections: OG image + Facebook Pixel (disabled in CMS preview mode so admin views don't pollute FB stats)
   const headParts = [];
   if (settings.og_image) {
     headParts.push(`<meta property="og:image" content="${escapeHtmlAttr(settings.og_image)}" />`);
@@ -89,7 +71,6 @@ fbq('track', 'PageView');
 
   html = html.replace('<!-- CMS_INJECT_HEAD -->', headParts.join('\n'));
 
-  // Body injections: runtime config + CMS overrides + optional live-preview bridge
   const clientConfig = {
     previewMode,
     fbPixelEnabled,
@@ -113,6 +94,4 @@ fbq('track', 'PageView');
 
 module.exports = {
   renderLandingPage,
-  getAllCmsOverrides,
 };
-

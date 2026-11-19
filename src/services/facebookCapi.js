@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getDb, getAllSettings } = require('../db/database');
+const store = require('../db/store');
 
 const FB_GRAPH_VERSION = 'v21.0';
 
@@ -10,18 +10,13 @@ function sha256Normalize(value) {
 }
 
 function sha256Phone(e164) {
-  // Meta requires digits only including country code, no '+' or spaces
   const digits = String(e164 || '').replace(/\D/g, '');
   if (!digits) return undefined;
   return crypto.createHash('sha256').update(digits).digest('hex');
 }
 
-/**
- * Sends a server-side conversion event to Meta Conversions API (CAPI)
- * and logs it into `conversion_events`.
- */
 async function sendFacebookConversionEvent(params) {
-  const settings = getAllSettings();
+  const settings = await store.getAllSettings();
   const pixelId = (settings.fb_pixel_id || '').trim();
   const accessToken = (settings.fb_capi_token || '').trim();
   const capiEnabled = settings.fb_capi_enabled === '1';
@@ -106,38 +101,25 @@ async function sendFacebookConversionEvent(params) {
     capiResponseText = 'Chưa cấu hình Pixel ID hoặc CAPI Access Token';
   }
 
-  // Persist event log
-  try {
-    getDb()
-      .prepare(
-        `INSERT INTO conversion_events (
-          lead_id, event_name, event_id, source, fbclid, fbp, fbc,
-          utm_source, utm_campaign, event_source_url, value, currency,
-          capi_status, capi_http_code, capi_response, ip_address, user_agent
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        params.leadId ?? null,
-        eventName,
-        eventId,
-        params.source || 'server',
-        params.fbclid || '',
-        params.fbp || '',
-        params.fbc || '',
-        params.utmSource || '',
-        params.utmCampaign || '',
-        params.eventSourceUrl || '',
-        value,
-        currency,
-        capiStatus,
-        httpCode,
-        capiResponseText.slice(0, 2000),
-        params.ipAddress || '',
-        (params.userAgent || '').slice(0, 500)
-      );
-  } catch {
-    // non-fatal
-  }
+  await store.createConversionEvent({
+    lead_id: params.leadId ?? null,
+    event_name: eventName,
+    event_id: eventId,
+    source: params.source || 'server',
+    fbclid: params.fbclid || '',
+    fbp: params.fbp || '',
+    fbc: params.fbc || '',
+    utm_source: params.utmSource || '',
+    utm_campaign: params.utmCampaign || '',
+    event_source_url: params.eventSourceUrl || '',
+    value,
+    currency,
+    capi_status: capiStatus,
+    capi_http_code: httpCode,
+    capi_response: capiResponseText.slice(0, 2000),
+    ip_address: params.ipAddress || '',
+    user_agent: (params.userAgent || '').slice(0, 500),
+  });
 
   return {
     eventId,
@@ -150,4 +132,3 @@ async function sendFacebookConversionEvent(params) {
 module.exports = {
   sendFacebookConversionEvent,
 };
-
