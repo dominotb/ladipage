@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "build": "node -e \"require('./src/server'); console.log('Build & module verification OK');\"",
     "extract-assets": "node scripts/extract-assets.js",
     "test": "node scripts/test-e2e.js"
   },
@@ -23,7 +24,12 @@
     "jsonwebtoken": "^9.0.2",
     "libphonenumber-js": "^1.12.5",
     "multer": "^2.5.0",
-    "sanitize-html": "^2.14.0"
+    "sanitize-html": "2.18.2"
+  },
+  "overrides": {
+    "sanitize-html": {
+      "htmlparser2": "10.1.0"
+    }
   },
   "devDependencies": {
     "supabase": "^3.2.0"

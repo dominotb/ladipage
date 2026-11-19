@@ -55,6 +55,11 @@ app.use(
   })
 );
 
+// Clean favicon handling so /favicon.ico never triggers 404/Function error
+app.get('/favicon.ico', (_req, res) => {
+  res.status(204).end();
+});
+
 // Health check endpoint for Vercel monitoring
 app.get('/api/health', (_req, res) => {
   res.json({
