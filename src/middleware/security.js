@@ -55,7 +55,9 @@ const securityHeaders = helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: 'same-origin' },
+  // Required for Meta Event Setup Tool (window.opener handshake from business.facebook.com)
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   hsts: env.isProd
     ? { maxAge: 31536000, includeSubDomains: true, preload: true }
     : false,
