@@ -494,6 +494,9 @@
             { eventID: data.eventId || eventId }
           );
         }
+        if (typeof window.va === 'function') {
+          window.va('event', { name: 'LeadSubmitted' });
+        }
 
         formNotice.className = 'form-notice show success';
         formNotice.innerHTML =

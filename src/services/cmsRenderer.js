@@ -125,6 +125,11 @@ src="https://www.facebook.com/tr?id=${fbPixelId}&ev=PageView&noscript=1"
   ];
   if (previewMode) {
     bodyParts.push('<script src="/js/cms-bridge.js" defer></script>');
+  } else {
+    bodyParts.push(
+      '<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>',
+      '<script defer src="/_vercel/insights/script.js"></script>'
+    );
   }
 
   html = html.replace('<!-- CMS_INJECT_BODY -->', bodyParts.join('\n'));
