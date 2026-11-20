@@ -85,8 +85,12 @@ router.patch(
 
     await store.updateLead(id, { status, notes });
 
-    // Auto-send Meta CRM Conversion Event when lead advances to surveyed/won stage
-    const stageToEvent = { surveyed: 'Schedule', won: 'Purchase' };
+    // Auto-send Meta CRM Conversion Event when lead advances through funnel stages
+    const stageToEvent = {
+      contacted: 'Contact',
+      surveyed: 'Schedule',
+      won: 'Purchase',
+    };
     if (status !== existing.status && stageToEvent[status]) {
       const capiRes = await sendFacebookConversionEvent({
         leadId: id,

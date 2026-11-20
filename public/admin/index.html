@@ -198,7 +198,7 @@
             <h3>Hướng dẫn gắn Tracking chuẩn</h3>
             <ul class="guide-list">
               <li><strong>Deduplication tự động:</strong> Mỗi lần khách gửi form, hệ thống tạo một <code>event_id</code> duy nhất gửi đồng thời qua <code>fbq('track','Lead')</code> và Server CAPI để Meta tự động gộp, không đếm trùng.</li>
-              <li><strong>Mã hóa SHA-256:</strong> Số điện thoại (chuẩn E.164), tên và khu vực được băm SHA-256 ở backend trước khi gửi lên Graph API v21.0, tăng điểm Event Match Quality (EMQ).</li>
+              <li><strong>Mã hóa SHA-256:</strong> Số điện thoại (chuẩn E.164), tên và khu vực được băm SHA-256 ở backend trước khi gửi lên Graph API v27.0, tăng điểm Event Match Quality (EMQ).</li>
               <li><strong>Ghi nhận UTM &amp; FBCLID:</strong> Tự động bắt <code>fbclid</code>, <code>_fbp</code>, <code>_fbc</code>, <code>utm_source</code>, <code>utm_campaign</code> ngay khi khách bấm quảng cáo.</li>
               <li><strong>Gửi sự kiện chốt đơn:</strong> Ở tab <em>Dataform &amp; Leads</em>, bạn có thể bấm nút <strong>CAPI</strong> trên từng khách hàng để gửi sự kiện <code>Schedule</code> (Đã hẹn khảo sát) hoặc <code>Purchase</code> (Đã chốt hợp đồng) ngược về Meta để tối ưu tệp quảng cáo!</li>
             </ul>

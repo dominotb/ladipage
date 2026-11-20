@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const store = require('../db/store');
 
-const FB_GRAPH_VERSION = 'v21.0';
+const FB_GRAPH_VERSION = 'v27.0';
 
 function sha256Normalize(value) {
   const s = String(value || '').trim().toLowerCase();

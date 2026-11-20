@@ -491,7 +491,7 @@
   document.getElementById('fbTestBtn').addEventListener('click', async function () {
     var out = document.getElementById('fbTestOutput');
     out.classList.remove('hidden');
-    out.textContent = 'Đang gửi sự kiện Test tới Meta Graph API v21.0...';
+    out.textContent = 'Đang gửi sự kiện Test tới Meta Graph API v27.0...';
     try {
       var res = await api('/api/admin/facebook/test', {
         method: 'POST',
