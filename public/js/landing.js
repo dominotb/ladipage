@@ -282,17 +282,18 @@
 
   var attribution = collectAttribution();
 
-  function trackContactAction(label) {
+  function trackMetaEvent(eventName, label, extraParams) {
     if (isPreview) return;
     var eventId = generateUuid();
+    var fbParams = Object.assign({ content_name: label || eventName }, extraParams || {});
     if (typeof window.fbq === 'function' && cfg.fbPixelEnabled) {
-      window.fbq('track', 'Contact', { content_name: label }, { eventID: eventId });
+      window.fbq('track', eventName, fbParams, { eventID: eventId });
     }
     try {
       var payload = JSON.stringify({
-        event_name: 'Contact',
+        event_name: eventName,
         event_id: eventId,
-        label: label,
+        label: label || eventName,
         fbclid: attribution.fbclid || '',
         fbp: attribution.fbp || '',
         fbc: attribution.fbc || '',
@@ -313,12 +314,60 @@
     } catch (e) {}
   }
 
-  document.querySelectorAll('.contact-fab a, a[href^="tel:"], a[href*="zalo.me"], a[href*="m.me"]').forEach(function (a) {
-    a.addEventListener('click', function () {
-      var label = a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent.trim() || 'Contact';
-      trackContactAction(label);
+  // 1. Contact event: Call, Zalo, Messenger, Fanpage
+  document
+    .querySelectorAll('.contact-fab a, a[href^="tel:"], a[href*="zalo.me"], a[href*="m.me"], a[href*="facebook.com"]')
+    .forEach(function (a) {
+      a.addEventListener('click', function () {
+        var label = a.getAttribute('title') || a.getAttribute('aria-label') || a.textContent.trim() || 'Contact';
+        trackMetaEvent('Contact', label);
+      });
+    });
+
+  // 2. ViewContent event: fires once when visitor views Product Tiers or opens a Project photo
+  var viewContentSent = false;
+  function fireViewContentOnce(label) {
+    if (viewContentSent || isPreview) return;
+    viewContentSent = true;
+    trackMetaEvent('ViewContent', label || 'Tủ bếp INOX cánh kính DOMINO', {
+      content_category: 'Tu bep INOX canh kinh',
+    });
+  }
+  var productSection = document.getElementById('san-pham');
+  if (productSection && 'IntersectionObserver' in window) {
+    var vcObs = new IntersectionObserver(
+      function (entries) {
+        if (entries[0] && entries[0].isIntersecting) {
+          fireViewContentOnce('Xem 4 dòng tủ bếp INOX cánh kính');
+          vcObs.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
+    vcObs.observe(productSection);
+  }
+  document.querySelectorAll('.tier .tcta a, [data-lightbox]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      fireViewContentOnce(el.getAttribute('data-caption') || el.textContent.trim());
     });
   });
+
+  // 3. FindLocation event: fires once when visitor scrolls to Showroom Google Maps
+  var findLocationSent = false;
+  var mapBox = document.querySelector('.foot-map');
+  if (mapBox && 'IntersectionObserver' in window) {
+    var mapObs = new IntersectionObserver(
+      function (entries) {
+        if (entries[0] && entries[0].isIntersecting && !findLocationSent) {
+          findLocationSent = true;
+          trackMetaEvent('FindLocation', 'Bản đồ Showroom DOMINO Thái Bình');
+          mapObs.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    mapObs.observe(mapBox);
+  }
 
   /* ---------- 8. Smart Phone Input (Default VN, Auto-detect +Country) + Duplicate Check ---------- */
   var phoneInput = document.getElementById('inp-phone');

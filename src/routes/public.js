@@ -256,13 +256,20 @@ router.post(
   })
 );
 
-// POST /api/track -> Track custom client events (Contact click: Call/Zalo/Messenger)
+// POST /api/track -> Track standard Meta events (Contact, ViewContent, FindLocation, etc.)
 router.post(
   '/api/track',
   phoneCheckLimiter,
   asyncHandler(async (req, res) => {
     const body = req.body || {};
-    const allowedEvents = ['Contact', 'ViewContent', 'PageView'];
+    const allowedEvents = [
+      'Contact',
+      'ViewContent',
+      'PageView',
+      'FindLocation',
+      'Schedule',
+      'CompleteRegistration',
+    ];
     const eventName = allowedEvents.includes(body.event_name) ? body.event_name : 'Contact';
     const eventId = sanitizePlainText(body.event_id, 80) || crypto.randomUUID();
 

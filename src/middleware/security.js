@@ -10,16 +10,27 @@ const securityHeaders = helmet({
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
-        "'unsafe-inline'", // needed for FB Pixel inline bootstrap & landing config
+        "'unsafe-inline'", // needed for FB Pixel inline bootstrap, Vercel Analytics & landing config
         'https://connect.facebook.net',
+        'https://www.facebook.com',
+        'https://*.facebook.com',
+        'https://*.fbcdn.net',
       ],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+        'https://connect.facebook.net',
+        'https://*.facebook.com',
+        'https://*.fbcdn.net',
+      ],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://*.fbcdn.net', 'data:'],
       imgSrc: [
         "'self'",
         'data:',
         'blob:',
         'https://www.facebook.com',
+        'https://*.facebook.com',
         'https://*.fbcdn.net',
         'https:',
       ],
@@ -27,17 +38,20 @@ const securityHeaders = helmet({
         "'self'", // allows Admin Live Preview iframe
         'https://www.google.com',
         'https://maps.google.com',
+        'https://www.facebook.com',
+        'https://*.facebook.com',
       ],
       frameAncestors: ["'self'"], // prevents clickjacking from external sites while allowing same-origin CMS preview
       connectSrc: [
         "'self'",
         'https://www.facebook.com',
+        'https://*.facebook.com',
         'https://connect.facebook.net',
         'https://graph.facebook.com',
       ],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
-      formAction: ["'self'"],
+      formAction: ["'self'", 'https://www.facebook.com', 'https://*.facebook.com'],
     },
   },
   crossOriginEmbedderPolicy: false,
