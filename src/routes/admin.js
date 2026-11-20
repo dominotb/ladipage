@@ -84,6 +84,28 @@ router.patch(
       req.body?.notes !== undefined ? sanitizePlainText(req.body.notes, 2000) : existing.notes;
 
     await store.updateLead(id, { status, notes });
+
+    // Auto-send Meta CRM Conversion Event when lead advances to surveyed/won stage
+    const stageToEvent = { surveyed: 'Schedule', won: 'Purchase' };
+    if (status !== existing.status && stageToEvent[status]) {
+      const capiRes = await sendFacebookConversionEvent({
+        leadId: id,
+        eventName: stageToEvent[status],
+        source: 'crm_stage',
+        actionSource: 'system_generated',
+        name: existing.name,
+        phoneE164: existing.phone_e164,
+        area: existing.area,
+        countryIso: existing.country_iso,
+        fbclid: existing.fbclid,
+        fbp: existing.fbp,
+        fbc: existing.fbc,
+        utmSource: existing.utm_source,
+        utmCampaign: existing.utm_campaign,
+      });
+      await store.updateLeadCapiStatus(id, capiRes.capiStatus, capiRes.capiResponse);
+    }
+
     await store.logAudit(req.admin.username, 'LEAD_UPDATE', `lead:${id}`, `status=${status}`, getClientIp(req));
     res.json({ ok: true, id, status, notes });
   })

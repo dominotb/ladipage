@@ -34,8 +34,17 @@ async function sendFacebookConversionEvent(params) {
   const shouldSend = (capiEnabled || params.forceSend) && pixelId && accessToken;
 
   if (shouldSend) {
+    const isCrmEvent =
+      params.actionSource === 'system_generated' ||
+      params.source === 'admin_manual' ||
+      params.source === 'crm_stage';
+
     const userData = {};
     if (params.phoneE164) userData.ph = [sha256Phone(params.phoneE164)];
+    if (params.email) userData.em = [sha256Normalize(params.email)];
+    if (params.metaLeadId && /^\d{15,17}$/.test(String(params.metaLeadId))) {
+      userData.lead_id = Number(params.metaLeadId);
+    }
     if (params.name) {
       const parts = String(params.name).trim().split(/\s+/);
       if (parts.length > 0) userData.fn = [sha256Normalize(parts[parts.length - 1])];
@@ -43,8 +52,10 @@ async function sendFacebookConversionEvent(params) {
     }
     if (params.area) userData.ct = [sha256Normalize(params.area)];
     if (params.countryIso) userData.country = [sha256Normalize(params.countryIso)];
-    if (params.ipAddress) userData.client_ip_address = params.ipAddress;
-    if (params.userAgent) userData.client_user_agent = params.userAgent;
+    if (!isCrmEvent) {
+      if (params.ipAddress) userData.client_ip_address = params.ipAddress;
+      if (params.userAgent) userData.client_user_agent = params.userAgent;
+    }
     if (params.fbp) userData.fbp = params.fbp;
     if (params.fbc) {
       userData.fbc = params.fbc;
@@ -52,25 +63,37 @@ async function sendFacebookConversionEvent(params) {
       userData.fbc = `fb.1.${Date.now()}.${params.fbclid}`;
     }
 
+    const customData = isCrmEvent
+      ? {
+          event_source: 'crm',
+          lead_event_source: 'DOMINO CRM',
+          currency,
+          value,
+          content_name: params.contentName || 'DOMINO Tủ bếp INOX cánh kính',
+        }
+      : {
+          currency,
+          value,
+          content_name: params.contentName || 'DOMINO Tủ bếp INOX cánh kính',
+          content_category: params.stage || 'Tu van tu bep',
+          utm_source: params.utmSource || undefined,
+          utm_campaign: params.utmCampaign || undefined,
+        };
+
+    const eventObj = {
+      event_name: eventName,
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: eventId,
+      action_source: isCrmEvent ? 'system_generated' : 'website',
+      user_data: userData,
+      custom_data: customData,
+    };
+    if (!isCrmEvent && params.eventSourceUrl) {
+      eventObj.event_source_url = params.eventSourceUrl;
+    }
+
     const payload = {
-      data: [
-        {
-          event_name: eventName,
-          event_time: Math.floor(Date.now() / 1000),
-          event_id: eventId,
-          action_source: 'website',
-          event_source_url: params.eventSourceUrl || undefined,
-          user_data: userData,
-          custom_data: {
-            currency,
-            value,
-            content_name: params.contentName || 'DOMINO Tủ bếp INOX cánh kính',
-            content_category: params.stage || 'Tu van tu bep',
-            utm_source: params.utmSource || undefined,
-            utm_campaign: params.utmCampaign || undefined,
-          },
-        },
-      ],
+      data: [eventObj],
     };
 
     if (testEventCode) {
