@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const store = require('../db/store');
+const env = require('../config/env');
 
 const FB_GRAPH_VERSION = 'v27.0';
 
@@ -17,10 +18,13 @@ function sha256Phone(e164) {
 
 async function sendFacebookConversionEvent(params) {
   const settings = await store.getAllSettings();
-  const pixelId = (settings.fb_pixel_id || '').trim();
-  const accessToken = (settings.fb_capi_token || '').trim();
-  const capiEnabled = settings.fb_capi_enabled === '1';
-  const testEventCode = (params.testEventCode ?? settings.fb_test_event_code ?? '').trim();
+  const pixelId = (settings.fb_pixel_id || env.metaPixelId || '1116316424615775').replace(/[^0-9]/g, '');
+  const accessToken = (settings.fb_capi_token || env.metaCapiToken || '').trim();
+  const capiEnabled = settings.fb_capi_enabled === '1' || Boolean(env.metaCapiToken);
+  const testEventCode = (
+    params.testEventCode ??
+    (settings.fb_test_event_code || env.metaTestEventCode || '')
+  ).trim();
 
   const eventId = params.eventId || crypto.randomUUID();
   const eventName = params.eventName || 'Lead';
@@ -104,7 +108,7 @@ async function sendFacebookConversionEvent(params) {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 4500);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

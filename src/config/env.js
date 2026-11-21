@@ -67,6 +67,9 @@ const env = {
   supabaseServiceRoleKey,
   supabaseBucket: (process.env.SUPABASE_STORAGE_BUCKET || 'domino-media').trim(),
   useSupabase,
+  metaPixelId: (process.env.META_PIXEL_ID || '').replace(/[^0-9]/g, ''),
+  metaCapiToken: (process.env.META_CAPI_TOKEN || '').trim(),
+  metaTestEventCode: (process.env.META_TEST_EVENT_CODE || '').trim(),
   jwtSecret:
     process.env.JWT_SECRET && !process.env.JWT_SECRET.startsWith('change-this')
       ? process.env.JWT_SECRET

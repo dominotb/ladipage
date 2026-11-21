@@ -256,24 +256,34 @@ router.post(
   })
 );
 
-// POST /api/track -> Track standard Meta events (Contact, ViewContent, FindLocation, etc.)
+// POST /api/track -> Strict allowlist for Meta standard events (Contact, ViewContent, FindLocation)
+const ALLOWED_TRACK_EVENTS = ['Contact', 'ViewContent', 'FindLocation'];
+const VALID_EVENT_ID_RE = /^[a-zA-Z0-9_-]{8,80}$/;
+
 router.post(
   '/api/track',
   phoneCheckLimiter,
   asyncHandler(async (req, res) => {
     const body = req.body || {};
-    const allowedEvents = [
-      'Contact',
-      'ViewContent',
-      'PageView',
-      'FindLocation',
-      'Schedule',
-      'CompleteRegistration',
-    ];
-    const eventName = allowedEvents.includes(body.event_name) ? body.event_name : 'Contact';
-    const eventId = sanitizePlainText(body.event_id, 80) || crypto.randomUUID();
+    const eventName = typeof body.event_name === 'string' ? body.event_name.trim() : '';
+    if (!ALLOWED_TRACK_EVENTS.includes(eventName)) {
+      return res.status(400).json({
+        ok: false,
+        code: 'INVALID_EVENT',
+        message: 'Sự kiện không nằm trong danh sách cho phép.',
+      });
+    }
 
-    await sendFacebookConversionEvent({
+    const eventId = typeof body.event_id === 'string' ? body.event_id.trim() : '';
+    if (!VALID_EVENT_ID_RE.test(eventId)) {
+      return res.status(400).json({
+        ok: false,
+        code: 'INVALID_EVENT_ID',
+        message: 'Thiếu hoặc sai định dạng event_id.',
+      });
+    }
+
+    const result = await sendFacebookConversionEvent({
       eventName,
       eventId,
       source: 'client_action',
@@ -288,7 +298,7 @@ router.post(
       userAgent: sanitizePlainText(req.get('user-agent'), 500),
     });
 
-    res.json({ ok: true, eventId });
+    res.json({ ok: true, eventId, capiStatus: result.capiStatus });
   })
 );
 
