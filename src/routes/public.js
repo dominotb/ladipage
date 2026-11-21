@@ -227,6 +227,7 @@ router.post(
       leadId,
       eventName: 'Lead',
       eventId,
+      externalId: sanitizePlainText(body.external_id || req.cookies?.domino_vid, 80) || `lead-${leadId}`,
       source: 'form_submit',
       name,
       phoneE164: phoneCheck.e164,
@@ -286,6 +287,7 @@ router.post(
     const result = await sendFacebookConversionEvent({
       eventName,
       eventId,
+      externalId: sanitizePlainText(body.external_id || req.cookies?.domino_vid, 80),
       source: 'client_action',
       contentName: sanitizePlainText(body.label || eventName, 120),
       fbclid: sanitizePlainText(body.fbclid, 250),

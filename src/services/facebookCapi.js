@@ -44,6 +44,7 @@ async function sendFacebookConversionEvent(params) {
       params.source === 'crm_stage';
 
     const userData = {};
+    if (params.externalId) userData.external_id = [sha256Normalize(params.externalId)];
     if (params.phoneE164) userData.ph = [sha256Phone(params.phoneE164)];
     if (params.email) userData.em = [sha256Normalize(params.email)];
     if (params.metaLeadId && /^\d{15,17}$/.test(String(params.metaLeadId))) {

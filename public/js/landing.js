@@ -280,6 +280,28 @@
     return stored;
   }
 
+  function getVisitorExternalId() {
+    var vid = getCookie('domino_vid');
+    if (!vid) {
+      try {
+        vid = localStorage.getItem('domino_vid') || '';
+      } catch (e) {}
+    }
+    if (!vid) {
+      vid = 'dom-' + generateUuid();
+    }
+    try {
+      localStorage.setItem('domino_vid', vid);
+    } catch (e) {}
+    document.cookie = 'domino_vid=' + encodeURIComponent(vid) + '; path=/; max-age=15552000; SameSite=Lax';
+    return vid;
+  }
+
+  var visitorExternalId = isPreview ? '' : getVisitorExternalId();
+  if (!isPreview && typeof window.fbq === 'function' && cfg.fbPixelEnabled && cfg.fbPixelId && visitorExternalId) {
+    window.fbq('init', cfg.fbPixelId, { external_id: visitorExternalId });
+  }
+
   var attribution = collectAttribution();
 
   function trackMetaEvent(eventName, label, extraParams) {
@@ -293,6 +315,7 @@
       var payload = JSON.stringify({
         event_name: eventName,
         event_id: eventId,
+        external_id: visitorExternalId,
         label: label || eventName,
         fbclid: attribution.fbclid || '',
         fbp: attribution.fbp || '',
@@ -491,6 +514,7 @@
         need: document.getElementById('inp-need').value.trim(),
         website_url: (document.getElementById('inp-website') || {}).value || '',
         event_id: eventId,
+        external_id: visitorExternalId,
         utm_source: attribution.utm_source || '',
         utm_medium: attribution.utm_medium || '',
         utm_campaign: attribution.utm_campaign || '',
